@@ -17,7 +17,7 @@ python -m SimpleProject
 # Add install some libraries and save
 ```
 pip install 'biopython==1.64'
-pip install -e 'git+https://github.com/wav/templates.git#egg=ExampleProject&py/ExampleProject'
+pip install -e 'git+https://github.com/wav/templates.git#egg=ExampleProject&subdirectory=py/ExampleProject'
 pip freeze > requirements.txt
 ```
 # Install from the requirements file
