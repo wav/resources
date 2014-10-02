@@ -1,0 +1,10 @@
+#!/bin/bash
+
+PYVENV3=pyvenv-3.4
+
+if [ ! -s .pyenv/bin/activate ]; then
+	$PYVENV3 .pyenv
+	chmod +x .pyenv/bin/activate
+fi
+
+. .pyenv/bin/activate

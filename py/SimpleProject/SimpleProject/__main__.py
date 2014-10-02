@@ -1,0 +1,1 @@
+print("SimpleProject.__main__")
