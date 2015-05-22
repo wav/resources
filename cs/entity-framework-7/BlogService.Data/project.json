@@ -1,0 +1,27 @@
+{
+    "version": "0.1-beta-*",
+    "exclude": "more/*.cs",
+    "dependencies": {
+        "EntityFramework": "7.0.0-beta5-*",
+        "EntityFramework.InMemory": "7.0.0-beta5-*",
+        "EntityFramework.Commands": "7.0.0-beta5-*",
+        "Newtonsoft.Json" : "6.0.8",
+        "NUnit" : "3.0.0-beta-*"
+    },
+    "commands": {
+        "run": "BlogService.Data"
+    },
+    "frameworks": {
+       "dnx451": {
+           "frameworkAssemblies": {
+                "System.Collections": "",
+                "System.IO": "",
+                "System.Runtime": "",
+                "System.Xml": "",
+                "System.Xml.Linq": "",
+                "System.Threading.Tasks": "",
+                "System.Text.Encoding": ""
+           }
+       }
+    }
+}
