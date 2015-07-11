@@ -33,7 +33,7 @@ source2::path() {
 readonly -f source2::path
 
 source2::script() {
-  local name=${1%/*}
+  local name=${1%%/*}
   local path=`source2::path $name` || return 1
   printf "$path/${1#*/}"
 }
