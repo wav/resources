@@ -5,7 +5,7 @@
     resources = "${HOME}/.profile/resources"
 
 [repos]
-    resources = "https://github.com/wav/resources.git"
+    resources = "https://github.com/wav/resources.git#32e3fa97db9d2b412e6bfe6062f7fc31df03c9ea"
 
 [collection "init"]
     script = "home/rc.sh"

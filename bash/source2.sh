@@ -45,7 +45,7 @@ source2::collection() {
     return 1
   fi
   local s=`echo $1 | tr -d '[]'`
-  local sources=(`git config --file "$SOURCE2_CONF" --get-all "collection.$s.source"`) || return 1
+  local sources=(`git config --file "$SOURCE2_CONF" --get-all "collection.$s.script"`) || return 1
   for s in ${sources[@]}; do
     s=`source2::script "$s"` || return 1
     echo "$s"
@@ -92,19 +92,24 @@ source2::pull() {
   done
   # clone ..
   local remote=
+  local head= # branch, tag or commit
   for n in ${repoNames[@]}; do
-    echo "Updating repo: $n"
     path=`source2::path $n`
+    remote=`git config --file "$SOURCE2_CONF" repos.$n` || return 1
+    head=${remote#*#}
+    remote=${remote%#*}
+    echo "Updating $n: $remote#$head"
     if [ -d "$path/.git" ]; then
       (cd "$path" && git pull origin master) || return 1
     else
       ([[ ! -d "$path" ]] && mkdir -p "$path")
-      (cd "$path") || return 1
-      remote=`git config --file "$SOURCE2_CONF" repos.$n`
       (cd "$path" && \
         git init && \
         git remote add origin "$remote" && \
         git pull origin master) || return 1
+    fi
+    if [ "$head" != "" ]; then
+      git checkout --detach "$head"
     fi
   done
 }
