@@ -70,6 +70,34 @@ source2::_keys() {
   git config --file "$SOURCE2_CONF" -l | grep ^$1 | sed -E "s|^$1\.([a-z]+).*$|\1|g"
 }
 
+# ? respository not found
+# ! commit not found
+# = commit matches
+# c commit exists
+# t is a tag
+# b is a branch
+source2::_commit() {
+  local head=$2 # branch, tag or commit
+  local path=`source2::path $1` || return 1
+  if [ ! -d "$path/.git" ]; then
+    echo "? $head" && return 0
+  fi
+  local commitId=`cd $path; git rev-parse --quiet --verify $head`
+  if [ $? -ne 0 ]; then
+    echo "! $head" && return 0
+  fi
+  [[ "$commitId" == "$head" ]] && echo "= $head" && return 0
+
+  list=(`cd $path; git tag -l --points-at $commitId`)
+  [[ ! -z "${list[$head]}" ]] && echo t "$commitId" && return 0
+
+  list=(`cd $path; git branch -l | grep -vE "\*?\s+\(.*\)$" | cut -c 3-`) # filter out detached
+  [[ ! -z "${list[$head]}" ]] && echo b "$commitId" && return 0
+
+  echo "c $commitId"    
+}
+
+# tip: for this to work seamlessly, use keys for authentication.
 source2::pull() {
   local repoNames=(`source2::_keys repos`)
   local pathNames=(`source2::_keys paths`)
@@ -90,27 +118,50 @@ source2::pull() {
       fi
     fi
   done
-  # clone ..
+
+  # clone
   local remote=
   local head= # branch, tag or commit
+  local commitType=
+  local commitId=
+  local desc
+  readCommmit() {
+    local res=`source2::_commit $n $head` || return 1
+    commitType=`echo $res | cut -c 1-1`
+    commitId=`echo $res | cut -c 3-`
+    return 0
+  }
+
   for n in ${repoNames[@]}; do
     path=`source2::path $n`
-    remote=`git config --file "$SOURCE2_CONF" repos.$n` || return 1
-    head=${remote#*#}
-    remote=${remote%#*}
-    echo "Updating $n: $remote#$head"
-    if [ -d "$path/.git" ]; then
+    res=`git config --file "$SOURCE2_CONF" repos.$n` || return 1
+    head=${res#*#}
+    remote=${res%#*}
+    readCommmit || return 1
+    desc="$n: $remote#$head"
+
+    if [ "$commitType" == "!" ]; then
+      echo "[pull] $desc"
       (cd "$path" && git pull origin master) || return 1
-    else
-      ([[ ! -d "$path" ]] && mkdir -p "$path")
+      readCommmit || return 1
+    elif [ "$commitType" == "?" ]; then
+      echo "[clone] $n: $remote#$head"
+      [[ ! -d "$path" ]] && mkdir -p "$path"
       (cd "$path" && \
         git init && \
         git remote add origin "$remote" && \
         git pull origin master) || return 1
+      readCommmit || return 1
     fi
-    if [ "$head" != "" ]; then
-      git checkout --detach "$head"
-    fi
+    
+    echo "[checkout $commitType] $desc"
+    case "$commitType" in
+      c) (cd $path; git checkout "$commitId") && return 0;;
+      t) (cd $path; git checkout "$head") && return 0;;
+      b) (cd $path; git checkout "$head") && return 0;;
+    esac
+
+    return 1
   done
 }
 readonly -f source2::pull
