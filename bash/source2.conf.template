@@ -9,4 +9,4 @@
 
 [collection "init"]
     script = "home/rc.sh"
-    script = "resources/bash/log.sh" ; must `source2::pull` first
+    script = "resources/bash/log.sh" ; must `source2::pull -a` first
