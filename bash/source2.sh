@@ -16,7 +16,7 @@
 #   ```
 # Requires: git-config
 
-declare -rx SOURCE2_CONF=$(pushd $(dirname $BASH_SOURCE)>/dev/null; pwd; popd>/dev/null)/source2.conf 2>/dev/null
+declare -rx SOURCE2_CONF=${SOURCE2_CONF:=$(pushd $(dirname $BASH_SOURCE)>/dev/null; pwd; popd>/dev/null)/source2.conf} &>/dev/null
 
 source2::path() {
   if [[ ! "$1" =~ ^[a-z]+$ ]]; then
@@ -80,10 +80,10 @@ readonly -f source2::_keys
 # c commit exists
 # t is a tag
 # b is a branch
-source2::_commitId() {
-  [[ "$2" == "" ]] && return 1
-  local head=$2 # branch, tag or commit
-  local path=`source2::path $1`
+source2::git::commitId() {
+  [[ "$1" == "" ]] && return 1
+  local path=$1
+  local head=${2:=HEAD} # branch, tag or commit
   [[ "$path" == "" ]] && return 1
   if [ ! -d "$path/.git" ]; then
     echo "? $head" && return 0
@@ -102,27 +102,25 @@ source2::_commitId() {
 
   echo "c $commitId"    
 }
-readonly -f source2::_commitId
+readonly -f source2::git::commitId
 
-source2::_pullById() {
-  local name=$1
-  local path=`source2::path $name`
-  [[ "$path" == "" ]] && return 1
-  local res=`git config --file "$SOURCE2_CONF" repos.$name`
-  local remote=${res%#*}
-  if [ "$remote" == "" ]; then
-    echo "source2::_pullById: repository not set for path '$name'" >&2
-    return 1
+source2::git::pull() {
+  ([[ "$1" == "" ]] || [[ "$2" == "" ]]) && return 1
+  local path=$1
+  local url=$2
+  local remote=${url%#*}
+  local head=HEAD # branch, tag or commit
+  if [[ "$url" =~ '#' ]]; then
+    head=${url#*#}
   fi
-  local head=${res#*#} # branch, tag or commit
   local commitType commitId
-  read commitType commitId <<<$(source2::_commitId $name $head)
+  read commitType commitId <<<$(source2::git::commitId $path $head)
 
-  local desc="$name: $remote#$head"
+  local desc="$remote#$head"
   if [ "$commitType" == "!" ]; then
     echo "[pull] $desc"
     (cd "$path" && git pull origin master) || return 1
-    read commitType commitId <<<$(source2::_commitId $name $head)
+    read commitType commitId <<<$(source2::git::commitId $path $head)
   elif [ "$commitType" == "?" ]; then
     echo "[clone] $name: $remote#$head"
     [[ ! -d "$path" ]] && mkdir -p "$path"
@@ -130,7 +128,7 @@ source2::_pullById() {
       git init && \
       git remote add origin "$remote" && \
       git pull origin master) || return 1
-    read commitType commitId <<<$(source2::_commitId $name $head) || return 1
+    read commitType commitId <<<$(source2::git::commitId $path $head) || return 1
   fi
   
   echo "[checkout $commitType] $desc"
@@ -141,6 +139,15 @@ source2::_pullById() {
   esac
 
   return 1
+}
+readonly -f source2::git::pull
+
+source2::_pullById() {
+  local path=`source2::path $1`
+  [[ "$path" == "" ]] && return 1
+  local url=`git config --file "$SOURCE2_CONF" repos.$1`
+  [[ "$url" == "" ]] && return 1
+  source2::git::pull "$path" "$url"
 }
 readonly -f source2::_pullById
 
