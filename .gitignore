@@ -4,3 +4,4 @@ cs/**/bin
 cs/**/packages
 cs/**/obj
 cs/**/*.csproj.bk
+*.html
