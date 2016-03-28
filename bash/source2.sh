@@ -1,18 +1,16 @@
 # Description:  Use paths that are aliased in a `source2.conf` file.
 # Author:       wav at github
 #
-# Usage: Define paths, collections and git repos in a `source2.conf`
+# Usage: Define paths and git repos in a `source2.conf`
 #        then source `source2.sh` in a script or environment
 #
 #   `source2 home/rc.sh` # source 'rc.sh' in the path 'home'
-#   `source2 []init`     # source all scripts defined in the collection 'init'
 #
 # Using `source2.sh` in your env:
 #   1. Put `source2.sh` and source2.conf` in ~/.profile/
 #   2. In your `.bash_profile` do:
 #   ```
 #   . ~/.profile/source2.sh
-#   source2 []init
 #   ```
 # Requires: git-config
 
@@ -40,31 +38,12 @@ source2::script() {
 }
 readonly -f source2::script
 
-source2::collection() {
-  if [[ ! "$1" =~ ^'[]'[a-z]+$ ]]; then
-    echo "source2::collection: invalid collection '$1'" >&2
-    return 1
-  fi
-  local s=`echo $1 | tr -d '[]'`
-  local sources=(`git config --file "$SOURCE2_CONF" --get-all "collection.$s.script"`) || return 1
-  for s in ${sources[@]}; do
-    s=`source2::script "$s"`
-    [[ "$s" == "" ]] && return 1
-    echo "$s"
-  done
-}
-readonly -f source2::collection
-
 source2::scripts() {
   local s=
   for s in $@; do
-    if [ `echo $s | cut -c 1-2` == "[]" ]; then
-      source2::collection "$s" || return 1
-    else
-      s=`source2::script "$s"`
-      [[ "$s" == "" ]] && return 1
-      echo "$s"
-    fi
+    s=`source2::script "$s"`
+    [[ "$s" == "" ]] && return 1
+    echo "$s"
   done
 }
 readonly -f source2::scripts
@@ -127,7 +106,12 @@ source2::git::pull() {
     (cd "$path" && \
       git init && \
       git remote add origin "$remote" && \
-      git pull origin master) || return 1
+      git pull origin master)
+    local exitCode=$?
+    if [ $exitCode -ne 0 ]; then
+      rm -Rf "$path"
+      return $exitCode
+    fi
     read commitType commitId <<<$(source2::git::commitId $path $head) || return 1
   fi
   
@@ -168,11 +152,9 @@ source2::_pullAll() {
         echo "source2::pull: non-empty directory is not a git repository ($path)" >&2
         return 1
       fi
+    else
+      source2::_pullById "$name" || return 1
     fi
-  done
-
-  for name in ${repoNames[@]}; do
-    source2::_pullById "$name" || return 1
   done
 }
 readonly -f source2::_pullAll
@@ -190,6 +172,22 @@ source2::pull() {
   return 1
 }
 readonly -f source2::pull
+
+source2::_confChanged() {
+  local shaPath="$SOURCE2_CONF.shasum"
+  local SHA=`shasum "$shaPath" | grep -oE "^[0-9a-z]+" >/dev/null`
+  if [[ -f "$shaPath" ]]; then
+    local oldSHA=`cat $shaPath`
+    if [[ "$SHA" = "$oldSHA" ]]; then
+      return 1;
+    fi
+  fi
+  echo "$SHA" > "$shaPath"
+}
+
+source2::init() {
+  source2::_confChanged && source2::pull -a
+}
 
 # TODO: 
 #   - detect stack overflow.

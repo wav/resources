@@ -2,11 +2,9 @@
 
 [paths]
     home = "${HOME}/.profile/scripts"
-    resources = "${HOME}/.profile/resources"
+    wav  = "${HOME}/.profile/resources"
+    sexybashprompt = "${HOME}/.profile/sexy-bash-prompt"
 
 [repos]
-    resources = "https://github.com/wav/resources.git#32e3fa97db9d2b412e6bfe6062f7fc31df03c9ea"
-
-[collection "init"]
-    script = "home/rc.sh"
-    script = "resources/bash/log.sh" ; must `source2::pull -a` first
+    wav = "https://github.com/wav/resources.git#32e3fa97db9d2b412e6bfe6062f7fc31df03c9ea"
+    sexybashprompt = "https://github.com/twolfson/sexy-bash-prompt.git#ce509b667b6b83d5cd0b49f567b0184fde39631e"
